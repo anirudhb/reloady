@@ -35,7 +35,6 @@ pub fn hot_reload(
         new_sig.ident.span(),
     ));
     let impl_ident = new_sig.ident.clone();
-    // let ident2 = format_ident!("_{}_mod", new_sig.ident);
     let lock_ident = format_ident!(
         "__{}_FN_MUTEX",
         input.sig.ident.to_string().to_uppercase(),
@@ -52,22 +51,12 @@ pub fn hot_reload(
     };
     let sig_hash_lit = syn::Lit::Int(syn::LitInt::new(&sig_hash.to_string(), wrapped_sig.span()));
     let sig_hash_ident = format_ident!("{}__reloady_sighash", new_sig.ident);
-    // let link_str = syn::Lit::Str(syn::LitStr::new(
-    //     &format!("-export-dynamic-symbol={}", impl_ident.clone()),
-    //     impl_ident.span(),
-    // ));
 
     let output = quote! {
-        // #[link_args = #link_str]
-        // extern {}
-        // #![link_args = #link_str]
-        // #[link_args = #link_str]
-        // #[link(kind = "dylib")]
         #[allow(non_snake_case)]
         #[linkage = "external"]
         #[inline(never)]
         fn #sig_hash_ident() -> u64 { #sig_hash_lit }
-        #[cfg_attr(target = "windows", no_mangle)]
         #[linkage = "external"]
         #[inline(never)]
         #new_sig #block
@@ -81,8 +70,6 @@ pub fn hot_reload(
             (*f)(#arg_names)
         }
     };
-
-    // println!("{}", output);
 
     output.into()
 }
