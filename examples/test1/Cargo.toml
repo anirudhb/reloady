@@ -5,4 +5,4 @@ authors = ["anirudhb <anirudhb@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
-reloady = { path = "../reloady" }
+reloady = { path = "../../reloady" }
