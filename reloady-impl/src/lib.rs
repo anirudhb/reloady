@@ -52,6 +52,7 @@ pub fn hot_reload(
     let sig_hash_lit = syn::Lit::Int(syn::LitInt::new(&sig_hash.to_string(), wrapped_sig.span()));
     let sig_hash_ident = format_ident!("{}__reloady_sighash", new_sig.ident);
 
+    #[cfg(feature = "unstub")]
     let output = quote! {
         #[allow(non_snake_case)]
         #[linkage = "external"]
@@ -68,6 +69,19 @@ pub fn hot_reload(
             reloady::__update_fn(#new_ident_lit, std::module_path!(), #sig_hash_lit, &#lock_ident);
             let f = #lock_ident.lock().unwrap();
             (*f)(#arg_names)
+        }
+    };
+    #[cfg(not(feature = "unstub"))]
+    let output = quote! {
+        #[allow(non_snake_case)]
+        #[linkage = "external"]
+        #[inline(never)]
+        fn #sig_hash_ident() -> u64 { #sig_hash_lit }
+        #[linkage = "external"]
+        #[inline(never)]
+        #new_sig #block
+        #wrapped_sig {
+            loop {}
         }
     };
 

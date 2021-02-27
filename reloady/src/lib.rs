@@ -13,11 +13,16 @@ use std::{
     sync::{atomic::Ordering, Mutex},
 };
 
+#[cfg(feature = "unstub")]
 pub use lazy_static::lazy_static;
+#[cfg(feature = "unstub")]
 use libloading::{Library, Symbol};
-pub use reloady_impl::{hot_reload, init};
+#[cfg(feature = "unstub")]
 use symbolic::debuginfo::Object;
 
+pub use reloady_impl::{hot_reload, init};
+
+#[cfg(feature = "unstub")]
 lazy_static! {
     static ref __CRATE_NAME: Mutex<Option<&'static str>> = Mutex::new(None);
     static ref __MANIFEST_DIR: Mutex<Option<&'static str>> = Mutex::new(None);
@@ -38,6 +43,7 @@ struct DemangledSymbol {
 }
 
 impl Debuginfo {
+    #[cfg(feature = "unstub")]
     pub fn new(obj: &Object) -> Self {
         Self {
             symbols: obj
@@ -53,33 +59,40 @@ impl Debuginfo {
 }
 
 // set crate name for use later
+#[cfg(feature = "unstub")]
 pub fn init2(crate_name: &'static str, manifest_dir: &'static str) {
     let mut crate_name_guard = __CRATE_NAME.lock().unwrap();
     *crate_name_guard = Some(crate_name);
     let mut manifest_dir_guard = __MANIFEST_DIR.lock().unwrap();
     *manifest_dir_guard = Some(manifest_dir);
 }
+#[cfg(not(feature = "unstub"))]
+pub fn init2(_: &'static str, _: &'static str) {}
 
+#[cfg(feature = "unstub")]
 fn crate_name() -> &'static str {
     let crate_name = __CRATE_NAME.lock().unwrap();
     crate_name.unwrap()
 }
 
+#[cfg(feature = "unstub")]
 fn manifest_dir() -> &'static str {
     let manifest_dir = __MANIFEST_DIR.lock().unwrap();
     manifest_dir.unwrap()
 }
 
+#[cfg(feature = "unstub")]
 fn get_app_path() -> String {
     format!("{}/target/debug/{}", manifest_dir(), crate_name())
 }
 
+#[cfg(feature = "unstub")]
 fn get_dbg_path() -> String {
     format!("{}/target/debug/{}", manifest_dir(), crate_name())
 }
 
 // possibly update the given fn ptr
-#[cfg(not(feature = "stub"))]
+#[cfg(feature = "unstub")]
 pub fn __update_fn<F: Copy>(
     fn_name: &'static str,
     _module_path: &'static str,
@@ -189,10 +202,10 @@ pub fn __update_fn<F: Copy>(
     }
 }
 
-#[cfg(feature = "stub")]
+#[cfg(not(feature = "unstub"))]
 pub fn __update_fn<F: Copy>(_: &'static str, _: &'static str, _: u64, _: &Mutex<F>) {}
 
-#[cfg(not(feature = "stub"))]
+#[cfg(feature = "unstub")]
 fn update_debuginfo() {
     // load debuginfo to find symbols
     let debuginfo_bytes = {
@@ -222,6 +235,7 @@ impl<'a> std::ops::Deref for DebuginfoGuard<'a> {
     }
 }
 
+#[cfg(feature = "unstub")]
 fn get_debuginfo<'a>() -> DebuginfoGuard<'a> {
     let debuginfo_current = __CURRENT_DEBUGINFO.lock().unwrap();
     DebuginfoGuard {
@@ -229,7 +243,7 @@ fn get_debuginfo<'a>() -> DebuginfoGuard<'a> {
     }
 }
 
-#[cfg(not(feature = "stub"))]
+#[cfg(feature = "unstub")]
 fn load_function<'a, F>(lib: &'a Library, name: &str) -> Symbol<'a, F> {
     let debuginfo = get_debuginfo();
     for sym in &debuginfo.symbols {
@@ -246,7 +260,7 @@ fn load_function<'a, F>(lib: &'a Library, name: &str) -> Symbol<'a, F> {
     panic!("Couldn't find symbol");
 }
 
-#[cfg(not(feature = "stub"))]
+#[cfg(feature = "unstub")]
 fn valid_symbol<'a>(lib: &'a Library, name: &str, sighash_val: u64) -> bool {
     let debuginfo = get_debuginfo();
     let check_name = format!("{}__reloady_sighash", name);
