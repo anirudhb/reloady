@@ -1,17 +1,6 @@
 #![feature(label_break_value)]
 
-use std::{
-    collections::HashMap,
-    ffi::{CStr, CString},
-    fs::File,
-    io::{Cursor, Read},
-    sync::{atomic::AtomicUsize, Arc},
-    time::SystemTime,
-};
-use std::{
-    pin::Pin,
-    sync::{atomic::Ordering, Mutex},
-};
+use std::{collections::HashMap, fs::File, io::Read, sync::Mutex, time::SystemTime};
 
 #[cfg(feature = "unstub")]
 pub use lazy_static::lazy_static;
@@ -105,7 +94,7 @@ pub fn __update_fn<F: Copy>(
     // if necessary, update this fn to latest version
     {
         let most_recent_version = {
-            let mut mrv = __MOST_RECENT_VERSION.lock().unwrap();
+            let mrv = __MOST_RECENT_VERSION.lock().unwrap();
             *mrv
         };
         let mut lib_versions = __LIB_VERSIONS.lock().unwrap();
