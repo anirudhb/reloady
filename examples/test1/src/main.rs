@@ -14,6 +14,10 @@ fn main() {
 
 static NUMBER: AtomicUsize = AtomicUsize::new(0);
 
+// Try changing this function to see it update in real time!
+//
+// If the signature is changed, the program will exit with an error.
+// Changing the signature of a function always requires a rebuild.
 #[reloady::hot_reload]
 fn test(au: &AtomicUsize) -> usize {
     let res = au.load(Ordering::SeqCst);
