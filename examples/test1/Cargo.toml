@@ -3,6 +3,8 @@ name = "test1"
 version = "0.1.0"
 authors = ["anirudhb <anirudhb@users.noreply.github.com>"]
 edition = "2018"
+license = "AGPL-3.0-or-later"
+publish = false
 
 [dependencies]
 reloady = { path = "../../reloady" }
