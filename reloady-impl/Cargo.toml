@@ -11,6 +11,7 @@ proc-macro = true
 
 [features]
 unstub = []
+enabled = []
 
 [dependencies]
 proc-macro2 = "1.0.24"

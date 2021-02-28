@@ -88,10 +88,12 @@ fn get_exe_name<P: AsRef<Path>>(toml_dir: P, info: &CrateInfo) -> PathBuf {
 
 fn reload<P: AsRef<Path>>(toml_dir: P, info: &CrateInfo, stub: bool) -> Result<()> {
     let mut cargo_cmd = Command::new("cargo");
-    cargo_cmd.args(&["build", "--quiet"]);
+    cargo_cmd.args(&["build", "--quiet", "--features"]);
+    let mut features = vec!["reloady/enabled"];
     if !stub {
-        cargo_cmd.args(&["--features", "reloady/unstub"]);
+        features.push("reloady/unstub");
     }
+    cargo_cmd.arg(features.join(","));
     let mut cargo_inst = cargo_cmd
         .stderr(Stdio::piped())
         .stdout(Stdio::null())

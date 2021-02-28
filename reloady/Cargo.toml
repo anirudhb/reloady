@@ -15,6 +15,7 @@ libloading = { version = "0.7.0", optional = true }
 
 [features]
 unstub = ["reloady-impl/unstub", "lazy_static", "symbolic", "rustc-demangle", "libloading"]
+enabled = ["reloady-impl/enabled"]
 
 [profile.dev]
 opt-level = 3

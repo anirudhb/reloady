@@ -1,6 +1,7 @@
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, spanned::Spanned, FnArg, Pat, Signature};
 
+#[cfg(feature = "enabled")]
 #[proc_macro]
 pub fn init(_args: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
@@ -18,6 +19,13 @@ pub fn init(_args: proc_macro::TokenStream) -> proc_macro::TokenStream {
     res.into()
 }
 
+#[cfg(not(feature = "enabled"))]
+#[proc_macro]
+pub fn init(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    (quote! {}).into()
+}
+
+#[cfg(feature = "enabled")]
 #[proc_macro_attribute]
 pub fn hot_reload(
     _args: proc_macro::TokenStream,
@@ -86,6 +94,15 @@ pub fn hot_reload(
     };
 
     output.into()
+}
+
+#[cfg(not(feature = "enabled"))]
+#[proc_macro_attribute]
+pub fn hot_reload(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    input
 }
 
 fn transform_argnames(mut sig: Signature) -> (Signature, proc_macro2::TokenStream) {
