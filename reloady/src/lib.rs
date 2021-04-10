@@ -55,6 +55,7 @@ impl Debuginfo {
             symbols: obj
                 .symbols()
                 .filter_map(|sym| sym.name().map(|x| x.to_string()))
+                // .inspect(|s| println!("Enumerating symbol {}", s))
                 .map(|n| DemangledSymbol {
                     demangled: rustc_demangle::demangle(&n).to_string(),
                     mangled: n,
@@ -87,12 +88,40 @@ fn manifest_dir() -> &'static str {
     manifest_dir.unwrap()
 }
 
-#[cfg(feature = "unstub")]
+#[cfg(all(feature = "unstub", not(target_os = "windows")))]
 fn get_app_path() -> String {
     format!("{}/target/debug/{}", manifest_dir(), crate_name())
 }
 
-#[cfg(feature = "unstub")]
+#[cfg(all(feature = "unstub", target_os = "windows"))]
+fn get_app_path() -> String {
+    format!("{}\\target\\debug\\{}.exe", manifest_dir(), crate_name())
+}
+
+#[cfg(all(feature = "unstub", not(target_os = "windows")))]
+fn get_loadable_app_path() -> String {
+    get_app_path()
+}
+
+#[cfg(all(feature = "unstub", target_os = "windows"))]
+fn get_loadable_app_path() -> String {
+    use std::ffi::OsStr;
+    use std::path::PathBuf;
+    // use std::time::SystemTime;
+    // Copy
+    let path1 = PathBuf::from(get_app_path());
+    let mut path2 = path1.file_name().unwrap().to_owned();
+    let ts = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
+    path2.push(OsStr::new(&format!("-{}", ts.as_millis())));
+    let path2 = std::env::temp_dir().join(path2);
+    std::fs::copy(&path1, &path2).unwrap();
+    // println!("Loadable path: {:?}", path2);
+    path2.to_str().unwrap().to_string()
+}
+
+#[cfg(all(feature = "unstub", not(target_os = "windows")))]
 fn get_dbg_path() -> String {
     format!("{}/target/debug/{}", manifest_dir(), crate_name())
 }
@@ -107,7 +136,11 @@ pub fn __update_fn<F: Copy>(
 ) {
     // get last updated time, and check
     let app_path = get_app_path();
+    #[cfg(not(target_os = "windows"))]
     let sym_name = format!("{}::{}", _module_path, fn_name);
+    #[cfg(target_os = "windows")]
+    let sym_name = fn_name.to_string();
+    // println!("App path = {} sym-name = {}", app_path, sym_name);
     // if necessary, update this fn to latest version
     {
         let most_recent_version = {
@@ -136,6 +169,7 @@ pub fn __update_fn<F: Copy>(
             }
         }
     }
+    // println!("Waiting for metadata");
     let metadata = 'l: {
         loop {
             let res = std::fs::metadata(&app_path);
@@ -152,9 +186,11 @@ pub fn __update_fn<F: Copy>(
             // update
             *last_modify_time = modified;
         } else {
+            // println!("Fresh, nothing to do");
             return;
         }
     }
+    // println!("Starting reload");
 
     // 1. reload lib, while holding lib ref!!
     {
@@ -174,7 +210,7 @@ pub fn __update_fn<F: Copy>(
         // SAFETY: app_path always resolves to a valid exe
         let new_lib = 'l: {
             loop {
-                let res = unsafe { Library::new(get_app_path()) };
+                let res = unsafe { Library::new(get_loadable_app_path()) };
                 match res {
                     Ok(l) => break 'l l,
                     Err(_) => continue,
@@ -215,7 +251,10 @@ pub fn __update_fn<F: Copy>(_: &'static str, _: &'static str, _: u64, _: &Mutex<
 fn update_debuginfo() {
     // load debuginfo to find symbols
     let debuginfo_bytes = {
+        #[cfg(not(target_os = "windows"))]
         let mut f = File::open(get_dbg_path()).unwrap();
+        #[cfg(target_os = "windows")]
+        let mut f = File::open(get_app_path()).unwrap();
         let mut buf = Vec::new();
         f.read_to_end(&mut buf).unwrap();
         buf
@@ -270,7 +309,9 @@ fn load_function<'a, F>(lib: &'a Library, name: &str) -> Symbol<'a, F> {
 fn valid_symbol<'a>(lib: &'a Library, name: &str, sighash_val: u64) -> bool {
     let debuginfo = get_debuginfo();
     let check_name = format!("{}__reloady_sighash", name);
+    // println!("test name = {}", check_name);
     for sym in &debuginfo.symbols {
+        // println!("Trying symbol {}", sym.mangled);
         if sym.demangled.starts_with(&check_name) {
             // SAFETY: validated the lib contains the given symbol
             let sym_value: Symbol<fn() -> u64> =

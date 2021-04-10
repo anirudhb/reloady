@@ -21,7 +21,7 @@ static NUMBER: AtomicUsize = AtomicUsize::new(0);
 #[reloady::hot_reload]
 fn test(au: &AtomicUsize) -> usize {
     let res = au.load(Ordering::SeqCst);
-    let res = res + 3;
+    let res = res + 159;
     au.store(res, Ordering::SeqCst);
     res
 }

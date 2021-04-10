@@ -100,12 +100,29 @@ fn main() -> Result<()> {
 }
 
 fn get_exe_name<P: AsRef<Path>>(toml_dir: P, info: &CrateInfo) -> PathBuf {
-    toml_dir.as_ref().join("target/debug").join(&info.name)
+    let ret = toml_dir.as_ref().join("target/debug").join(&info.name);
+    #[cfg(target_os = "windows")]
+    let ret = {
+        use std::ffi::OsStr;
+        use std::time::SystemTime;
+        // Copy
+        // let path1 = PathBuf::from(get_app_path());
+        let path1 = ret.with_extension("exe");
+        let mut path2 = path1.file_name().unwrap().to_owned();
+        let ts = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap();
+        path2.push(OsStr::new(&format!("-{}", ts.as_millis())));
+        let path2 = std::env::temp_dir().join(path2);
+        std::fs::copy(&path1, &path2).unwrap();
+        path2.to_path_buf()
+    };
+    ret
 }
 
-fn reload<P: AsRef<Path>>(toml_dir: P, info: &CrateInfo, stub: bool) -> Result<()> {
+fn reload<P: AsRef<Path>>(_toml_dir: P, _info: &CrateInfo, stub: bool) -> Result<()> {
     let mut cargo_cmd = Command::new("cargo");
-    cargo_cmd.args(&["build", "--quiet", "--features"]);
+    cargo_cmd.args(&["build", "--features"]);
     let mut features = vec!["reloady/enabled"];
     if !stub {
         features.push("reloady/unstub");
@@ -113,13 +130,20 @@ fn reload<P: AsRef<Path>>(toml_dir: P, info: &CrateInfo, stub: bool) -> Result<(
     cargo_cmd.arg(features.join(","));
     let mut cargo_inst = cargo_cmd
         .stderr(Stdio::piped())
-        .stdout(Stdio::null())
+        // .stdout(Stdio::inherit())
+        // .stdout(Stdio::null())
         .spawn()?;
     let cargo_status = cargo_inst.wait()?;
-    let cmd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("mkexeloadable");
-    let exe_name = get_exe_name(toml_dir, info);
-    let cmd_inst = Command::new(cmd).arg(exe_name).status()?;
-    if cmd_inst.success() && cargo_status.success() {
+    #[cfg(target_os = "linux")]
+    let cmd_inst_success = {
+        let cmd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("mkexeloadable");
+        let exe_name = get_exe_name(_toml_dir, _info);
+        let cmd_inst = Command::new(cmd).arg(exe_name).status()?;
+        cmd_inst.success();
+    };
+    #[cfg(not(target_os = "linux"))]
+    let cmd_inst_success = true;
+    if cmd_inst_success && cargo_status.success() {
         info!("Reload success!");
         Ok(())
     } else {

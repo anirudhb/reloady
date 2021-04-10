@@ -29,7 +29,7 @@ pub fn init(_args: proc_macro::TokenStream) -> proc_macro::TokenStream {
         proc_macro2::Span::call_site(),
     ));
     let res = quote! {
-        #[link_args = "-export-dynamic"]
+        #[cfg_attr(not(target_os = "windows"), link_args = "-export-dynamic")]
         extern {}
         reloady::init2(#name_lit, env!("CARGO_MANIFEST_DIR"))
     };
@@ -76,13 +76,24 @@ pub fn hot_reload(
     };
     let sig_hash_lit = syn::Lit::Int(syn::LitInt::new(&sig_hash.to_string(), wrapped_sig.span()));
     let sig_hash_ident = format_ident!("{}__reloady_sighash", new_sig.ident);
+    #[cfg(target_os = "windows")]
+    let ex_str = format!(
+        "/EXPORT:{0}={0} /EXPORT:{1}={1}",
+        new_sig.ident, sig_hash_ident
+    );
+    #[cfg(not(target_os = "windows"))]
+    let ex_str = "".to_string();
 
     #[cfg(feature = "unstub")]
     let output = quote! {
+        #[cfg_attr(target_os = "windows", link_args = #ex_str)]
+        extern {}
         #[allow(non_snake_case)]
+        #[cfg_attr(target_os = "windows", no_mangle)]
         #[linkage = "external"]
         #[inline(never)]
         fn #sig_hash_ident() -> u64 { #sig_hash_lit }
+        #[cfg_attr(target_os = "windows", no_mangle)]
         #[linkage = "external"]
         #[inline(never)]
         #new_sig #block
@@ -98,10 +109,14 @@ pub fn hot_reload(
     };
     #[cfg(not(feature = "unstub"))]
     let output = quote! {
+        #[cfg_attr(target_os = "windows", link_args = #ex_str)]
+        extern {}
         #[allow(non_snake_case)]
+        #[cfg_attr(target_os = "windows", no_mangle)]
         #[linkage = "external"]
         #[inline(never)]
         fn #sig_hash_ident() -> u64 { #sig_hash_lit }
+        #[cfg_attr(target_os = "windows", no_mangle)]
         #[linkage = "external"]
         #[inline(never)]
         #new_sig #block
