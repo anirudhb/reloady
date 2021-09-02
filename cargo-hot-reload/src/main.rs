@@ -139,7 +139,7 @@ fn reload<P: AsRef<Path>>(_toml_dir: P, _info: &CrateInfo, stub: bool) -> Result
         let cmd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("mkexeloadable");
         let exe_name = get_exe_name(_toml_dir, _info);
         let cmd_inst = Command::new(cmd).arg(exe_name).status()?;
-        cmd_inst.success();
+        cmd_inst.success()
     };
     #[cfg(not(target_os = "linux"))]
     let cmd_inst_success = true;
